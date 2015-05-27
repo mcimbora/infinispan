@@ -45,6 +45,11 @@ public class JCacheManager extends AbstractJCacheManager {
       sm = new ServerManager(configuration.servers().get(0).host());
    }
 
+   public JCacheManager(URI uri, RemoteCacheManager remoteCacheManager, CachingProvider provider) {
+      super(uri, null, provider, null, true);
+      cm = remoteCacheManager;
+   }
+
    @Override
    public ClassLoader getClassLoader() {
       return cm.getConfiguration().classLoader();
