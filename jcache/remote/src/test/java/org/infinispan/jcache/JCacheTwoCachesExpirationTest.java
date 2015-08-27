@@ -7,6 +7,7 @@ import org.infinispan.jcache.util.JCacheTestingUtil;
 import org.infinispan.server.hotrod.HotRodServer;
 import org.infinispan.test.fwk.CleanupAfterMethod;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import javax.cache.Cache;
@@ -22,7 +23,6 @@ import static org.infinispan.server.hotrod.test.HotRodTestingUtil.hotRodCacheCon
  * @author Matej Cimbora
  */
 @Test(testName = "org.infinispan.jcache.JCacheTwoCachesExpirationTest", groups = "functional")
-@CleanupAfterMethod
 public class JCacheTwoCachesExpirationTest extends AbstractTwoCachesExpirationTest {
 
    private HotRodServer hotRodServer1;
@@ -63,12 +63,17 @@ public class JCacheTwoCachesExpirationTest extends AbstractTwoCachesExpirationTe
       return hotRodCacheConfiguration(builder);
    }
 
-   @AfterClass
    @Override
    protected void destroy() {
       super.destroy();
       killServers(hotRodServer1, hotRodServer2);
       Caching.getCachingProvider(testSpecificClassLoader).close();
+   }
+
+   @AfterMethod
+   public void clearCaches() {
+      cache1.clear();
+      cache2.clear();
    }
 
    @Override

@@ -20,6 +20,7 @@ public class CacheProducer {
       ConfigurationBuilder defaultClusteredCacheConfig = getDefaultClusteredCacheConfig(CacheMode.DIST_SYNC, false);
       EmbeddedCacheManager cacheManager = TestCacheManagerFactory.createClusteredCacheManager(defaultClusteredCacheConfig);
       cacheManager.defineConfiguration("annotation", getDefaultClusteredCacheConfig(CacheMode.DIST_SYNC).build());
+      TestingUtil.blockUntilViewReceived(cacheManager.getCache("annotation"), 3);
       return cacheManager;
    }
 

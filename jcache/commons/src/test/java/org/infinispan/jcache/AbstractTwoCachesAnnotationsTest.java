@@ -25,11 +25,9 @@ public abstract class AbstractTwoCachesAnnotationsTest extends Arquillian {
       Cache cache1 = getCache1(m);
       Cache cache2 = getCache2(m);
 
-      getJCacheAnnotatedClass().put("val");
-      assertEquals(getEntryCount(cache1.iterator()), 1);
-      assertEquals(getEntryCount(cache2.iterator()), 1);
-      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("val")));
-      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("val")));
+      getJCacheAnnotatedClass().put("put");
+      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("put")));
+      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("put")));
    }
 
    @Test
@@ -39,16 +37,14 @@ public abstract class AbstractTwoCachesAnnotationsTest extends Arquillian {
 
       assertEquals(getJCacheAnnotatedClass().getResultInvocationCount(), 0);
 
-      getJCacheAnnotatedClass().result("val");
+      getJCacheAnnotatedClass().result("result");
       assertEquals(getJCacheAnnotatedClass().getResultInvocationCount(), 1);
 
-      getJCacheAnnotatedClass().result("val");
+      getJCacheAnnotatedClass().result("result");
       assertEquals(getJCacheAnnotatedClass().getResultInvocationCount(), 1);
 
-      assertEquals(getEntryCount(cache1.iterator()), 1);
-      assertEquals(getEntryCount(cache2.iterator()), 1);
-      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("val")));
-      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("val")));
+      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("result")));
+      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("result")));
    }
 
    @Test
@@ -56,13 +52,13 @@ public abstract class AbstractTwoCachesAnnotationsTest extends Arquillian {
       Cache cache1 = getCache1(m);
       Cache cache2 = getCache2(m);
 
-      cache1.put("key1", "val1");
-      assertTrue(cache1.containsKey("key1"));
-      assertTrue(cache2.containsKey("key1"));
+      getJCacheAnnotatedClass().put("remove");
+      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("remove")));
+      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("remove")));
 
-      getJCacheAnnotatedClass().remove("key1");
-      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("key1")));
-      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("key1")));
+      getJCacheAnnotatedClass().remove("remove");
+      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("remove")));
+      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("remove")));
    }
 
    @Test
@@ -70,18 +66,18 @@ public abstract class AbstractTwoCachesAnnotationsTest extends Arquillian {
       Cache cache1 = getCache1(m);
       Cache cache2 = getCache2(m);
 
-      cache1.put("key1", "val1");
-      cache1.put("key2", "val2");
-      assertTrue(cache1.containsKey("key1"));
-      assertTrue(cache2.containsKey("key1"));
-      assertTrue(cache1.containsKey("key2"));
-      assertTrue(cache2.containsKey("key2"));
+      getJCacheAnnotatedClass().put("removeAll1");
+      getJCacheAnnotatedClass().put("removeAll2");
+      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("removeAll1")));
+      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("removeAll1")));
+      assertTrue(cache1.containsKey(new CustomGeneratedCacheKey("removeAll2")));
+      assertTrue(cache2.containsKey(new CustomGeneratedCacheKey("removeAll2")));
 
       getJCacheAnnotatedClass().removeAll();
-      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("key1")));
-      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("key2")));
-      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("key1")));
-      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("key2")));
+      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("removeAll1")));
+      assertFalse(cache1.containsKey(new CustomGeneratedCacheKey("removeAll1")));
+      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("removeAll2")));
+      assertFalse(cache2.containsKey(new CustomGeneratedCacheKey("removeAll2")));
    }
 
    public abstract JCacheAnnotatedClass getJCacheAnnotatedClass();

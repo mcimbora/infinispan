@@ -94,6 +94,7 @@ public class JCacheTwoCachesAnnotationsTest extends AbstractTwoCachesAnnotations
       properties.put("infinispan.client.hotrod.server_list", hotRodServer2.getHost() + ":" + hotRodServer2.getPort());
       cache2 = createCacheWithProperties(Caching.getCachingProvider(testSpecificClassLoader), JCacheTwoCachesBasicOpsTest.class, "annotation", properties);
 
+      TestingUtil.blockUntilViewsReceived(30000, cacheManager1.getCache("annotation"), cacheManager2.getCache("annotation"));
    }
 
    @AfterClass

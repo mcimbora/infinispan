@@ -1,12 +1,15 @@
 package org.infinispan.jcache;
 
 import org.infinispan.client.hotrod.test.HotRodClientTestingUtil;
+import org.infinispan.commons.equivalence.AnyServerEquivalence;
 import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.jcache.util.JCacheTestingUtil;
 import org.infinispan.server.hotrod.HotRodServer;
 import org.infinispan.test.TestingUtil;
 import org.infinispan.test.fwk.CleanupAfterMethod;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import javax.cache.Cache;
@@ -24,8 +27,8 @@ import static org.infinispan.server.hotrod.test.HotRodTestingUtil.hotRodCacheCon
 @Test(testName = "org.infinispan.jcache.JCacheTwoCachesBasicOpsTest", groups = "functional")
 public class JCacheTwoCachesBasicOpsTest extends AbstractTwoCachesBasicOpsTest {
 
-   static HotRodServer hotRodServer1;
-   static HotRodServer hotRodServer2;
+   private HotRodServer hotRodServer1;
+   private HotRodServer hotRodServer2;
    private Cache cache1;
    private Cache cache2;
    private ClassLoader testSpecificClassLoader;
@@ -50,12 +53,17 @@ public class JCacheTwoCachesBasicOpsTest extends AbstractTwoCachesBasicOpsTest {
       waitForClusterToForm("default");
    }
 
-   @AfterClass
    @Override
    protected void destroy() {
       killServers(hotRodServer1, hotRodServer2);
       Caching.getCachingProvider(testSpecificClassLoader).close();
       super.destroy();
+   }
+
+   @AfterMethod
+   public void clearCaches() {
+      cache1.clear();
+      cache2.clear();
    }
 
    @Override
