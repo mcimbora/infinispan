@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.net.ssl.SSLContext;
 
@@ -77,6 +78,7 @@ public class TcpTransportFactory implements TransportFactory {
    private volatile TopologyInfo topologyInfo;
 
    private volatile int clustersViewed = 0;
+   private volatile String currentClusterName;
    private List<ClusterInfo> clusters = new ArrayList<>();
 
    @Override
@@ -102,6 +104,7 @@ public class TcpTransportFactory implements TransportFactory {
             });
             clusters.add(new ClusterInfo(DEFAULT_CLUSTER_NAME, initialServers));
          }
+         currentClusterName = DEFAULT_CLUSTER_NAME;
          topologyInfo = new TopologyInfo(defaultCacheTopologyId, Collections.unmodifiableCollection(servers), configuration);
          tcpNoDelay = configuration.tcpNoDelay();
          tcpKeepAlive = configuration.tcpKeepAlive();
@@ -455,29 +458,61 @@ public class TcpTransportFactory implements TransportFactory {
    }
 
    @Override
-   public boolean trySwitchCluster(byte[] cacheName) {
-      if (clusters.isEmpty()) {
-         log.debugf("No alternative clusters configured, so can't switch cluster");
-         return false;
+   public ClusterSwitchStatus trySwitchCluster(String failedClusterName, byte[] cacheName) {
+      synchronized (lock) {
+         if (clusters.isEmpty()) {
+            log.debugf("No alternative clusters configured, so can't switch cluster");
+            return ClusterSwitchStatus.NOT_SWITCHED;
+         }
+
+         if (clustersViewed >= clusters.size()) {
+            log.debugf("All cluster addresses viewed (number=%d) and none worked: %s", clustersViewed, clusters);
+            return ClusterSwitchStatus.NOT_SWITCHED;
+         }
+
+         // Try switching topology if there isn't another topology change in progress,
+         // or if the cluster switched to is not available.
+         if (topologyInfo.isTopologyValid() || isSwitchedClusterNotAvailable(failedClusterName)) {
+            if (log.isTraceEnabled())
+               log.tracef("Switching clusters, failed cluster is '%s' and current cluster name is '%s",
+                  failedClusterName, currentClusterName);
+
+            List<ClusterInfo> candidateClusters = new ArrayList<>();
+            for (ClusterInfo cluster : clusters) {
+               String clusterName = cluster.clusterName;
+               if (!clusterName.equals(failedClusterName))
+                  candidateClusters.add(cluster);
+            }
+
+            ClusterInfo cluster = candidateClusters.get(clustersViewed % candidateClusters.size());
+            //ClusterInfo cluster = clusters.get(clustersViewed++);
+            Collection<SocketAddress> servers = updateTopologyInfo(cluster.clusterAddresses, true);
+            if (!servers.isEmpty()) {
+               FailoverRequestBalancingStrategy balancer = getOrCreateIfAbsentBalancer(cacheName);
+               balancer.setServers(servers);
+            }
+            topologyInfo.setTopologyId(HotRodConstants.SWITCH_CLUSTER_TOPOLOGY);
+            currentClusterName = cluster.clusterName;
+
+            if (log.isInfoEnabled()) {
+               if (!cluster.clusterName.equals(DEFAULT_CLUSTER_NAME))
+                  log.switchedToCluster(cluster.clusterName);
+               else
+                  log.switchedBackToMainCluster();
+            }
+            return ClusterSwitchStatus.SWITCHED;
+         }
+
+         return ClusterSwitchStatus.IN_PROGRESS;
       }
+   }
 
-      if (clustersViewed >= clusters.size()) {
-         log.debugf("All cluster addresses viewed (number=%d) and none worked: %s", clustersViewed, clusters);
-         return false;
-      }
+   private boolean isSwitchedClusterNotAvailable(String failedClusterName) {
+      return currentClusterName.equals(failedClusterName);
+   }
 
-      ClusterInfo cluster = clusters.get(clustersViewed++);
-      updateServers(cluster.clusterAddresses, cacheName, true);
-      topologyInfo.setTopologyId(HotRodConstants.SWITCH_CLUSTER_TOPOLOGY);
-
-      if (log.isInfoEnabled()) {
-         if (!cluster.clusterName.equals(DEFAULT_CLUSTER_NAME))
-            log.switchedToCluster(cluster.clusterName);
-         else
-            log.switchedBackToMainCluster();
-      }
-
-      return true;
+   public enum ClusterSwitchStatus {
+      NOT_SWITCHED, SWITCHED, IN_PROGRESS;
    }
 
    @Override
@@ -507,6 +542,11 @@ public class TcpTransportFactory implements TransportFactory {
       }
 
       return false;
+   }
+
+   @Override
+   public String getCurrentClusterName() {
+      return currentClusterName;
    }
 
    private Collection<SocketAddress> findClusterInfo(String clusterName) {

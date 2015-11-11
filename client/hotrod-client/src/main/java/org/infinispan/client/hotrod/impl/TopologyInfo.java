@@ -106,8 +106,13 @@ public final class TopologyInfo {
       return Optional.empty();
    }
 
-   private boolean isTopologyValid() {
-      return topologyId.get() != HotRodConstants.SWITCH_CLUSTER_TOPOLOGY;
+   public boolean isTopologyValid() {
+      Integer id = topologyId.get();
+      Boolean valid = id != HotRodConstants.SWITCH_CLUSTER_TOPOLOGY;
+      if (log.isTraceEnabled())
+         log.tracef("Is topology id (%s) valid? %b", id, valid);
+
+      return valid;
    }
 
    public void updateServers(Collection<SocketAddress> updatedServers) {

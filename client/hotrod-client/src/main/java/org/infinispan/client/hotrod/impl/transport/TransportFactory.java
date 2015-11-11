@@ -13,6 +13,8 @@ import org.infinispan.client.hotrod.event.ClientListenerNotifier;
 import org.infinispan.client.hotrod.impl.consistenthash.ConsistentHash;
 import org.infinispan.client.hotrod.impl.consistenthash.ConsistentHashFactory;
 import org.infinispan.client.hotrod.impl.protocol.Codec;
+import org.infinispan.client.hotrod.impl.transport.tcp.TcpTransportFactory;
+import org.infinispan.client.hotrod.impl.transport.tcp.TcpTransportFactory.ClusterSwitchStatus;
 import org.infinispan.commons.marshall.Marshaller;
 
 /**
@@ -67,10 +69,11 @@ public interface TransportFactory {
 
    void reset(byte[] cacheName);
 
-   boolean trySwitchCluster(byte[] cacheName);
+   ClusterSwitchStatus trySwitchCluster(String failedClusterName, byte[] cacheName);
 
    Marshaller getMarshaller();
 
    boolean switchToCluster(String clusterName);
 
+   String getCurrentClusterName();
 }
