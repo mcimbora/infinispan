@@ -460,6 +460,9 @@ public class TcpTransportFactory implements TransportFactory {
    @Override
    public ClusterSwitchStatus trySwitchCluster(String failedClusterName, byte[] cacheName) {
       synchronized (lock) {
+         if (log.isTraceEnabled())
+            log.tracef("Trying to switch cluster away from '%s'", failedClusterName);
+
          if (clusters.isEmpty()) {
             log.debugf("No alternative clusters configured, so can't switch cluster");
             return ClusterSwitchStatus.NOT_SWITCHED;
@@ -470,11 +473,17 @@ public class TcpTransportFactory implements TransportFactory {
             return ClusterSwitchStatus.NOT_SWITCHED;
          }
 
-         // Try switching topology if there isn't another topology change in progress,
-         // or if the cluster switched to is not available.
-         if (topologyInfo.isTopologyValid() || isSwitchedClusterNotAvailable(failedClusterName)) {
+         String currentClusterName = this.currentClusterName;
+         if (!isSwitchedClusterNotAvailable(failedClusterName, currentClusterName)) {
+            log.debugf("Cluster already switched from failed cluster `%s` to `%s`, try again", failedClusterName, currentClusterName);
+            return ClusterSwitchStatus.IN_PROGRESS;
+         }
+
+         // Switch cluster if there has not been a topology id cluster switch reset recently,
+         // or if the topology is still uninitialised, there's no concurrent cluster switches
+         if (topologyInfo.isTopologyValid() || isSwitchedClusterNotAvailable(failedClusterName, currentClusterName)) {
             if (log.isTraceEnabled())
-               log.tracef("Switching clusters, failed cluster is '%s' and current cluster name is '%s",
+               log.tracef("Switching clusters, failed cluster is '%s' and current cluster name is '%s'",
                   failedClusterName, currentClusterName);
 
             List<ClusterInfo> candidateClusters = new ArrayList<>();
@@ -492,7 +501,8 @@ public class TcpTransportFactory implements TransportFactory {
                balancer.setServers(servers);
             }
             topologyInfo.setTopologyId(HotRodConstants.SWITCH_CLUSTER_TOPOLOGY);
-            currentClusterName = cluster.clusterName;
+            clustersViewed++; // Increase number of clusters viewed
+            this.currentClusterName = cluster.clusterName;
 
             if (log.isInfoEnabled()) {
                if (!cluster.clusterName.equals(DEFAULT_CLUSTER_NAME))
@@ -500,6 +510,7 @@ public class TcpTransportFactory implements TransportFactory {
                else
                   log.switchedBackToMainCluster();
             }
+
             return ClusterSwitchStatus.SWITCHED;
          }
 
@@ -507,7 +518,7 @@ public class TcpTransportFactory implements TransportFactory {
       }
    }
 
-   private boolean isSwitchedClusterNotAvailable(String failedClusterName) {
+   private boolean isSwitchedClusterNotAvailable(String failedClusterName, String currentClusterName) {
       return currentClusterName.equals(failedClusterName);
    }
 
